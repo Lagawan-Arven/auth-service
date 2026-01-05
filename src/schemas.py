@@ -10,6 +10,7 @@ class User_Create(Base_User):
     password: str
 
 class User_Out(Base_User):
+    id: int
 
     class Config:
         from_attributes = True

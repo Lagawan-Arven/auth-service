@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException,Depends,APIRouter
+from fastapi.security import OAuth2PasswordRequestForm
 import logging
 
 from src import schemas
@@ -22,8 +23,8 @@ def register_user(user_data: schemas.User_Create,
         #Checks if the user already registered
         db_user = session.query(models.User).filter(models.User.username==user_data.username).first()
         if db_user:
-            logger.info("User account already exist")
-            raise HTTPException(status_code=400,detail="User account already exist")
+            logger.info("User account already existed | User registration failed")
+            raise HTTPException(status_code=400,detail="User account already existed | User registration failed")
         
         hashed_password = hash_password(user_data.password)
         new_user = models.User(
@@ -39,11 +40,10 @@ def register_user(user_data: schemas.User_Create,
         return new_user
     except HTTPException:
         session.rollback()
-        logger.info("User registration failed")
         raise
     except Exception as e:
         session.rollback()
-        logger.info("Internal Server Error")
+        logger.info("Internal Server Error | User registration failed")
         raise HTTPException(status_code=500,detail="Internal Server Error") from e
 
 #======================================================
@@ -56,12 +56,12 @@ def login_user(username: str,password: str,
     try:
         db_user = session.query(models.User).filter(models.User.username==username).first()
         if not db_user:
-            logger.info("User account not found")
-            raise HTTPException(status_code=404,detail="User account not found")
+            logger.info("User account not found | User login failed")
+            raise HTTPException(status_code=404,detail="User account not found | User login failed")
         
         if not verify_password(password,hashed_password=db_user.password):
-            logger.info("Password did not match")
-            raise HTTPException(status_code=404,detail="Password did not match")
+            logger.info("Password did not match | User login failed")
+            raise HTTPException(status_code=404,detail="Password did not match | User login failed")
         
         access_token = create_access_token({"id":db_user.id,"role":db_user.role})
 
@@ -69,9 +69,37 @@ def login_user(username: str,password: str,
         return {"message":"User login successfull","access_token":access_token,"token_type":"bearer"}
     except HTTPException:
         session.rollback()
-        logger.info("User login failed")
         raise
     except Exception as e:
         session.rollback()
-        logger.info("Internal Server Error")
+        logger.info("Internal Server Error | User login failed")
+        raise HTTPException(status_code=500,detail="Internal Server Error") from e
+    
+    #======================================================
+#                   LOGIN OAUTH2
+#======================================================
+@router.post("/login_form")
+def login_user(form:OAuth2PasswordRequestForm = Depends(),
+               session: Session = Depends(get_session)) -> dict:
+    
+    try:
+        db_user = session.query(models.User).filter(models.User.username==form.username).first()
+        if not db_user:
+            logger.info("User account not found | User login failed")
+            raise HTTPException(status_code=404,detail="User account not found | User login failed")
+        
+        if not verify_password(form.password,hashed_password=db_user.password):
+            logger.info("Password did not match | User login failed")
+            raise HTTPException(status_code=404,detail="Password did not match | User login failed")
+        
+        access_token = create_access_token({"id":db_user.id,"role":db_user.role})
+
+        logger.info("User login successfull | username: %s",db_user.username)
+        return {"message":"User login successfull","access_token":access_token,"token_type":"bearer"}
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.info("Internal Server Error | User login failed")
         raise HTTPException(status_code=500,detail="Internal Server Error") from e

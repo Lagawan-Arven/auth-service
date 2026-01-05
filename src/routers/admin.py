@@ -1,5 +1,4 @@
 from fastapi import Depends,HTTPException,APIRouter
-from sqlalchemy import JSON
 from sqlalchemy.orm import Session
 import logging
 
@@ -12,7 +11,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.get("/users",response_model=schemas.Pagination[schemas.User_Out])
-def get_all_users(admin_acess = Depends(get_admin_access),
+def get_all_users(admin_access = Depends(get_admin_access),
                   session: Session = Depends(get_session),
                   pagination = Depends(get_pagination)):
     
@@ -30,5 +29,5 @@ def get_all_users(admin_acess = Depends(get_admin_access),
         raise
     except Exception as e:
         session.rollback()
-        logger.info("Internal Server Error")
+        logger.info("Internal Server Error | Getting all users failed")
         raise HTTPException(status_code=500,detail="Internal Server Error") from e
