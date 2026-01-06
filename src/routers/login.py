@@ -63,6 +63,10 @@ def login_user(username: str,password: str,
             logger.info("Password did not match | User login failed")
             raise HTTPException(status_code=404,detail="Password did not match | User login failed")
         
+        if db_user.status == "restricted":
+            logger.info("Your account have been restricted | User login failed")
+            raise HTTPException(status_code=403,detail="Your account have been restricted | User login failed")
+
         access_token = create_access_token({"id":db_user.id,"role":db_user.role})
 
         logger.info("User login successfull | username: %s",db_user.username)
@@ -75,7 +79,7 @@ def login_user(username: str,password: str,
         logger.info("Internal Server Error | User login failed")
         raise HTTPException(status_code=500,detail="Internal Server Error") from e
     
-    #======================================================
+#======================================================
 #                   LOGIN OAUTH2
 #======================================================
 @router.post("/login_form")
@@ -91,7 +95,11 @@ def login_user(form:OAuth2PasswordRequestForm = Depends(),
         if not verify_password(form.password,hashed_password=db_user.password):
             logger.info("Password did not match | User login failed")
             raise HTTPException(status_code=404,detail="Password did not match | User login failed")
-        
+
+        if db_user.status == "restricted":
+            logger.info("Your account have been restricted | User login failed")
+            raise HTTPException(status_code=403,detail="Your account have been restricted | User login failed")
+
         access_token = create_access_token({"id":db_user.id,"role":db_user.role})
 
         logger.info("User login successfull | username: %s",db_user.username)

@@ -9,6 +9,7 @@ from src.settings import models
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login_form")
 
+#GET SESSION
 def get_session():
     my_session = session()
     try:
@@ -16,6 +17,7 @@ def get_session():
     finally:
         my_session.close()
 
+#GET CURRENT USER
 def get_current_user(token = Depends(oauth2_scheme),session: Session = Depends(get_session)) -> models.User:
     try:
         payload = jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
@@ -29,12 +31,14 @@ def get_current_user(token = Depends(oauth2_scheme),session: Session = Depends(g
     
     return db_user
 
+#GET ADMIN ACCESS
 def get_admin_access(current_user = Depends(get_current_user)) -> models.User:
 
     if current_user.role != "admin":
         raise HTTPException(status_code=401,detail="Unauthorized")
     return current_user
 
+#GET PAGINATION
 def get_pagination(page:int = Query(1,ge=1),limit:int = Query(10,ge=1,le=1000)):
 
     offset = (page - 1)*limit
