@@ -41,7 +41,7 @@ def get_all_users(admin_access = Depends(get_admin_access),
 #           GET USER BY ID OR EMAIL OR USERNAME
 #======================================================
 @router.get("/users/user")
-def get_user(id:Optional[int] = None, email:Optional[str] = None, username:Optional[str] = None,
+def get_user(id:int|None = None, email:str|None = None, username:str|None = None,
             admin_access = Depends(get_admin_access),
             session: Session = Depends(get_session)):
     try:
@@ -69,7 +69,7 @@ def get_user(id:Optional[int] = None, email:Optional[str] = None, username:Optio
 #           RESTRICTING A USER ACCOUNT
 #======================================================
 @router.post("/users")
-def restrict_user(id:Optional[int] = None, email:Optional[str] = None, username:Optional[str] = None,
+def restrict_user(id:int|None = None, email:str|None = None, username:str|None = None,
                 admin_access = Depends(get_admin_access),
                 session: Session = Depends(get_session)):
     try:
@@ -86,6 +86,9 @@ def restrict_user(id:Optional[int] = None, email:Optional[str] = None, username:
         if db_user.role =="admin":
             logger.info("User admin cannot be restricted | Restricting user failed")
             raise HTTPException(status_code=403,detail="User admin cannot be restricted!")
+        if db_user.status == "restricted":
+            logger.info("User is already restricted")
+            raise HTTPException(status_code=400,detail="User is already restricted")
         
         db_user.status = "restricted"
         session.commit()
@@ -104,7 +107,7 @@ def restrict_user(id:Optional[int] = None, email:Optional[str] = None, username:
 #           UNRESTRICTING A USER ACCOUNT
 #======================================================
 @router.put("/users")
-def unrestrict_user(id:Optional[int] = None, email:Optional[str] = None, username:Optional[str] = None,
+def unrestrict_user(id:int|None = None, email:str|None = None, username:str|None = None,
                 admin_access = Depends(get_admin_access),
                 session: Session = Depends(get_session)):
     try:
@@ -121,7 +124,7 @@ def unrestrict_user(id:Optional[int] = None, email:Optional[str] = None, usernam
         if db_user.role =="admin":
             logger.info("User admin cannot be restricted/unrestricted")
             raise HTTPException(status_code=403,detail="User admin cannot be restricted/unrestricted!")
-        if db_user.status == "active" or "deactivated":
+        if db_user.status != "restricted":
             logger.info("User is not restricted")
             raise HTTPException(status_code=400,detail="User is not restricted")
         

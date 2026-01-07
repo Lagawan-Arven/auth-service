@@ -7,7 +7,7 @@ from src.configurations.database import session
 from src.settings.auth import SECRET_KEY,ALGORITHM
 from src.settings import models
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login_form")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login_form",refreshUrl="refresh")
 
 #GET SESSION
 def get_session():

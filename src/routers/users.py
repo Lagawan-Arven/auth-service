@@ -1,6 +1,7 @@
 from fastapi import Depends,HTTPException,APIRouter
 from sqlalchemy.orm import Session
 import logging
+from typing import Annotated
 
 from src.settings import models
 from src.settings.dependencies import get_current_user, get_session
@@ -14,8 +15,8 @@ logger = logging.getLogger(__name__)
 #======================================================
 #                GET CURRENT USER INFO
 #======================================================
-@router.get("/users/account",response_model=schemas.User_Out)
-def get_current_user_info(current_user = Depends(get_current_user)):
+@router.get("/users/me",response_model=schemas.User_Out)
+def get_current_user_info(current_user: Annotated[get_current_user,Depends]):
     if current_user.status == "deactivated":
         raise HTTPException(status_code=403,detail="Your account is deactivated")
     return current_user
@@ -23,7 +24,7 @@ def get_current_user_info(current_user = Depends(get_current_user)):
 #======================================================
 #             UPDATE/EDIT CURRENT USER INFO
 #======================================================
-@router.put("/users/account",response_model=schemas.User_Out)
+@router.put("/users/me",response_model=schemas.User_Out)
 def update_user_account(update_data: schemas.User_Update,
                 current_user:models.User = Depends(get_current_user),
                 session: Session = Depends(get_session)):
@@ -57,7 +58,7 @@ def update_user_account(update_data: schemas.User_Update,
 #======================================================
 #                   DEACTIVATE ACCOUNT
 #======================================================
-@router.post("/users/account")
+@router.post("/users/me")
 def deactive_user_account(current_user = Depends(get_current_user),
                           session: Session = Depends(get_session)):
     if current_user.status == "deactivated":
@@ -68,9 +69,9 @@ def deactive_user_account(current_user = Depends(get_current_user),
     return {"message":"User account deactivated successfully"}
 
 #======================================================
-#                   DEACTIVATE ACCOUNT
+#                   REACTIVATE ACCOUNT
 #======================================================
-@router.post("/user/account")
+@router.patch("/user/me")
 def reactivate_user_account(current_user = Depends(get_current_user),
                           session: Session = Depends(get_session)):
     if current_user.status == "active":
@@ -82,7 +83,7 @@ def reactivate_user_account(current_user = Depends(get_current_user),
 #======================================================
 #                   DELETE ACCOUNT
 #======================================================
-@router.delete("/users/account")
+@router.delete("/users/me")
 def delete_user_account(current_user = Depends(get_current_user),
                         session: Session = Depends(get_session)):
     
