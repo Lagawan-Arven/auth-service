@@ -1,4 +1,4 @@
-from fastapi import Depends,HTTPException,APIRouter
+from fastapi import Depends,HTTPException,APIRouter,Request
 from sqlalchemy.orm import Session
 import logging
 from typing import Annotated
@@ -7,16 +7,20 @@ from src.settings import models
 from src.settings.dependencies import get_current_user, get_session
 from src.settings.auth import hash_password
 from src import schemas
+from src.configurations.rate_limit import limiter
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+db_session = Annotated[Session,Depends(get_session)]
+
 #======================================================
 #                GET CURRENT USER INFO
 #======================================================
 @router.get("/users/me",response_model=schemas.User_Out)
-def get_current_user_info(current_user: Annotated[get_current_user,Depends]):
+@limiter.limit("5/minute")
+def get_current_user_info(request: Request, current_user: Annotated[schemas.User_Out,Depends(get_current_user)]):
     if current_user.status == "deactivated":
         raise HTTPException(status_code=403,detail="Your account is deactivated")
     return current_user
@@ -26,8 +30,8 @@ def get_current_user_info(current_user: Annotated[get_current_user,Depends]):
 #======================================================
 @router.put("/users/me",response_model=schemas.User_Out)
 def update_user_account(update_data: schemas.User_Update,
-                current_user:models.User = Depends(get_current_user),
-                session: Session = Depends(get_session)):
+                session: db_session,     
+                current_user:models.User = Depends(get_current_user)):
     try:
         db_user = session.get(models.User,current_user.id)
         if db_user.status == "deactivated":

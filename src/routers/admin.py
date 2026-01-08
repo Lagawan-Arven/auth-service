@@ -1,5 +1,4 @@
-from typing import Optional
-from fastapi import Depends,HTTPException,APIRouter
+from fastapi import Depends,HTTPException,APIRouter,Request
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 import logging
@@ -7,6 +6,7 @@ import logging
 from src.settings.dependencies import get_admin_access,get_session,get_pagination
 from src.settings import models
 from src import schemas
+from src.configurations.rate_limit import limiter
 
 router = APIRouter()
 
@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 #                  GET ALL USERS
 #======================================================
 @router.get("/users")
-def get_all_users(admin_access = Depends(get_admin_access),
+@limiter.limit("5/minute")
+def get_all_users(request: Request, admin_access = Depends(get_admin_access),
                   session: Session = Depends(get_session),
                   pagination = Depends(get_pagination)):
     
@@ -24,7 +25,7 @@ def get_all_users(admin_access = Depends(get_admin_access),
         db_users = session.query(models.User)
         total = db_users.count()
         if not total:
-            raise HTTPException(status_code=404,detail="There is no users yet | Getting all users failed")
+            raise HTTPException(status_code=404,detail="There is no users yet")
         
         users = db_users.limit(pagination["limit"]).offset(pagination["offset"]).all()
         
@@ -41,7 +42,8 @@ def get_all_users(admin_access = Depends(get_admin_access),
 #           GET USER BY ID OR EMAIL OR USERNAME
 #======================================================
 @router.get("/users/user")
-def get_user(id:int|None = None, email:str|None = None, username:str|None = None,
+@limiter.limit("5/minute")
+def get_user(request: Request, id:int|None = None, email:str|None = None, username:str|None = None,
             admin_access = Depends(get_admin_access),
             session: Session = Depends(get_session)):
     try:
@@ -53,7 +55,7 @@ def get_user(id:int|None = None, email:str|None = None, username:str|None = None
             )  
         ).first()
         if not db_user:
-            raise HTTPException(status_code=404,detail="User not found | Getting user failed")
+            raise HTTPException(status_code=404,detail="User not found")
         
         return db_user
         
@@ -69,7 +71,8 @@ def get_user(id:int|None = None, email:str|None = None, username:str|None = None
 #           RESTRICTING A USER ACCOUNT
 #======================================================
 @router.post("/users")
-def restrict_user(id:int|None = None, email:str|None = None, username:str|None = None,
+@limiter.limit("5/minute")
+def restrict_user(request: Request, id:int|None = None, email:str|None = None, username:str|None = None,
                 admin_access = Depends(get_admin_access),
                 session: Session = Depends(get_session)):
     try:
@@ -107,7 +110,8 @@ def restrict_user(id:int|None = None, email:str|None = None, username:str|None =
 #           UNRESTRICTING A USER ACCOUNT
 #======================================================
 @router.put("/users")
-def unrestrict_user(id:int|None = None, email:str|None = None, username:str|None = None,
+@limiter.limit("5/minute")
+def unrestrict_user(request: Request, id:int|None = None, email:str|None = None, username:str|None = None,
                 admin_access = Depends(get_admin_access),
                 session: Session = Depends(get_session)):
     try:

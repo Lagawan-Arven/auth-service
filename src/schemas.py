@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel
-from typing import Generic,TypeVar,Optional
+from typing import Generic,TypeVar
 
 class Base_User(BaseModel):
     username: str
@@ -10,9 +10,9 @@ class User_Create(Base_User):
     password: str
 
 class User_Update(BaseModel):
-    username: Optional[str] = None
-    email: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    email: str | None = None
+    password: str | None = None
 
 class User_Out(Base_User):
     id: int

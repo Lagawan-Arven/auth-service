@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException,Depends,APIRouter
+from fastapi import HTTPException,Depends,APIRouter,Request
 from fastapi.security import OAuth2PasswordRequestForm
 import logging,hashlib
 from datetime import datetime,timezone,timedelta
@@ -8,6 +8,7 @@ from src import schemas
 from src.settings.dependencies import get_session,get_current_user
 from src.settings.auth import hash_password,verify_password,create_access_token,create_refresh_token
 from src.settings import models
+from src.configurations.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,8 @@ router = APIRouter()
 #                   REGISTER USER
 #======================================================
 @router.post("/register",response_model=schemas.User_Out)
-def register_user(user_data: schemas.User_Create,
+@limiter.limit("5/minute")
+def register_user(request: Request, user_data: schemas.User_Create,
                   session: Session = Depends(get_session)):
     try:
         #Checks if the user already registered
@@ -50,7 +52,8 @@ def register_user(user_data: schemas.User_Create,
 #                   LOGIN USER
 #======================================================
 @router.post("/login")
-def login_user(username: str,password: str,
+@limiter.limit("5/minute")
+def login_user(request: Request, username: str,password: str,
                session: Session = Depends(get_session)) -> dict:
     
     try:
@@ -70,6 +73,14 @@ def login_user(username: str,password: str,
         access_token = create_access_token({"id":db_user.id,"role":db_user.role})
         raw_refresh_token, hashed_refresh_token = create_refresh_token()
 
+        new_refresh_token = models.Refresh_Token(
+            refresh_token = hashed_refresh_token,
+            expire_at = datetime.now(timezone.utc) + timedelta(days=7),
+            user = db_user
+        )
+        session.add(new_refresh_token)
+        session.commit()
+
         logger.info("User login successfull | username: %s",db_user.username)
         return {"message":"User login successfull","access_token":access_token,"token_type":"bearer","refresh_token":raw_refresh_token}
     except HTTPException:
@@ -84,7 +95,8 @@ def login_user(username: str,password: str,
 #                   LOGIN OAUTH2
 #======================================================
 @router.post("/login_form")
-def login_user(form:OAuth2PasswordRequestForm = Depends(),
+@limiter.limit("5/minute")
+def login_user(request: Request, form:OAuth2PasswordRequestForm = Depends(),
                session: Session = Depends(get_session)) -> dict:
     
     try:
@@ -126,7 +138,9 @@ def login_user(form:OAuth2PasswordRequestForm = Depends(),
 #                   REFRESH ENPOINT
 #======================================================
 @router.get("/refresh")
-def refresh(refresh_token: str,
+@limiter.limit("5/minute")
+def refresh(request: Request,
+            refresh_token: str,
             current_user = Depends(get_current_user),
             session: Session = Depends(get_session)):
     
